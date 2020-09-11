@@ -1,0 +1,31 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:12.4-alpine
+    user: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=ekanek
+      - POSTGRES_PASSWORD=ekanek
+      - POSTGRES_DB=ekanek
+  webserver:
+    build: 
+      context: .
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_MAX_IDLE_CONNS=25
+      - DB_MAX_OPEN_CONNS=100
+      - DB_NAME=ekanek
+      - DB_PASS=ekanek
+      - DB_PORT=5432
+      - DB_USER=ekanek
+      - LOG_LEVEL=info
+      - SRV_TIMEOUT=10s
+    ports:
+        - "8080:8080"
+    container_name: ekanek
