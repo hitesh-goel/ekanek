@@ -9,23 +9,48 @@ services:
       - POSTGRES_USER=ekanek
       - POSTGRES_PASSWORD=ekanek
       - POSTGRES_DB=ekanek
+
+  s3-fake:
+    image: localstack/localstack
+    hostname: s3-fake
+    ports:
+      - 4572:4572
+      - 8000:8000
+    environment:
+      - SERVICES=s3
+      - DEBUG=${DEBUG- }
+      - DATA_DIR=${DATA_DIR- }
+      - PORT_WEB_UI=8000
+      - LAMBDA_EXECUTOR=${LAMBDA_EXECUTOR- }
+      - KINESIS_ERROR_PROBABILITY=${KINESIS_ERROR_PROBABILITY- }
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+    volumes:
+      - "${TMPDIR:-/tmp/localstack}:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
   webserver:
-    build: 
+    build:
       context: .
     depends_on:
       - postgres
+      - s3-fake
     links:
       - postgres
+      - s3-fake
     environment:
       - DB_HOST=postgres
-      - DB_MAX_IDLE_CONNS=25
-      - DB_MAX_OPEN_CONNS=100
       - DB_NAME=ekanek
       - DB_PASS=ekanek
       - DB_PORT=5432
       - DB_USER=ekanek
+      - DB_SSL_MODE=disable
       - LOG_LEVEL=info
       - SRV_TIMEOUT=10s
+      - PRIVATE_KEY=askjhdfalkjdsfa12121kjsfasvakjsh12132435dasaldsfasfd
+      - AWS_ACCESS_KEY_ID=dummy-id
+      - AWS_SECRET_ACCESS_KEY=dummy-secret
+      - AWS_DEFAULT_REGION=us-west-2
     ports:
-        - "8080:8080"
+      - "8080:8080"
     container_name: ekanek
