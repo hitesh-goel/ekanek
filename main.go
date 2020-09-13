@@ -4,11 +4,17 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/hitesh-goel/ekanek/internal/handlers/assets"
+	awss3 "github.com/hitesh-goel/ekanek/internal/pkg/aws"
 	"log"
 	"time"
 
 	"github.com/hitesh-goel/ekanek/internal/db"
 	"github.com/hitesh-goel/ekanek/internal/handlers/healthz"
+	"github.com/hitesh-goel/ekanek/internal/handlers/user"
 	"github.com/hitesh-goel/ekanek/internal/logging"
 	"github.com/hitesh-goel/ekanek/internal/server"
 )
@@ -22,6 +28,10 @@ var (
 		DbUser:     flag.String("db-user", "", "DB user"),
 		LogLevel:   flag.String("log-level", "", "Logger level"),
 		SrvTimeout: flag.Duration("srv-timeout", time.Duration(0), "Server timeout (e.g., 10s)"),
+		AWSRegion:  flag.String("aws-region", "", "AWS Region"),
+		AWSKey:     flag.String("aws-key", "", "AWS Key"),
+		AWSSecret:  flag.String("aws-secret", "", "AWS Secret"),
+		PrivateKey: flag.String("private-key", "", "Secreet Key"),
 	}
 
 	errRun = errors.New("unable to run")
@@ -35,6 +45,10 @@ type config struct {
 	DbUser     *string
 	LogLevel   *string
 	SrvTimeout *time.Duration
+	AWSRegion  *string
+	AWSKey     *string
+	AWSSecret  *string
+	PrivateKey *string
 }
 
 func init() {
@@ -59,12 +73,19 @@ func run() error {
 		Password: *cfg.DbPass,
 		User:     *cfg.DbUser,
 	})
+
 	if err != nil {
 		return fmt.Errorf("%v: %w", errRun, err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("%v: %w", errRun, err)
+	// TODO: Handle Endpoint & S3ForcePathStyle for local development using environment variable
+	awsSess := awss3.AwsResources{
+		Session: session.Must(session.NewSession(&aws.Config{
+			Credentials:      credentials.NewStaticCredentials(*cfg.AWSKey, *cfg.AWSSecret, ""),
+			S3ForcePathStyle: aws.Bool(true),
+			Region:           aws.String(*cfg.AWSRegion),
+			Endpoint:         aws.String("http://s3-fake:4572"),
+		})),
 	}
 
 	srv, err := server.New(server.Config{
@@ -81,6 +102,11 @@ func run() error {
 		ServiceName: "ekanek",
 		StartupTime: time.Now().UTC(),
 	}, db))
+
+	srv.HandleFunc(user.HandleSignup(db))
+	srv.HandleFunc(user.HandleLogin(*cfg.PrivateKey, db))
+
+	srv.HandleFunc(assets.HandleAssetUpload(db, awsSess))
 
 	logger.Info().Msg("listening...")
 	return srv.ListenAndServe()
