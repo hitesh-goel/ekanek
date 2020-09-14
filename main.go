@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/hitesh-goel/ekanek/internal/handlers/assets"
-	awss3 "github.com/hitesh-goel/ekanek/internal/pkg/aws"
+	"github.com/hitesh-goel/ekanek/internal/handlers/auth"
 	"log"
 	"time"
 
@@ -79,13 +79,14 @@ func run() error {
 	}
 
 	// TODO: Handle Endpoint & S3ForcePathStyle for local development using environment variable
-	awsSess := awss3.AwsResources{
+	ar := assets.AssetResources{
 		Session: session.Must(session.NewSession(&aws.Config{
 			Credentials:      credentials.NewStaticCredentials(*cfg.AWSKey, *cfg.AWSSecret, ""),
 			S3ForcePathStyle: aws.Bool(true),
 			Region:           aws.String(*cfg.AWSRegion),
 			Endpoint:         aws.String("http://s3-fake:4572"),
 		})),
+		DTO: db,
 	}
 
 	srv, err := server.New(server.Config{
@@ -103,10 +104,13 @@ func run() error {
 		StartupTime: time.Now().UTC(),
 	}, db))
 
-	srv.HandleFunc(user.HandleSignup(db))
+	srv.HandleFunc(user.HandleSignup(*cfg.PrivateKey, db))
 	srv.HandleFunc(user.HandleLogin(*cfg.PrivateKey, db))
-
-	srv.HandleFunc(assets.HandleAssetUpload(db, awsSess))
+	srv.HandleFunc(auth.Auth(assets.HandleAssetUpload(&ar)))
+	srv.HandleFunc(auth.Auth(assets.HandleAssetDownload(&ar)))
+	srv.HandleFunc(auth.Auth(assets.HandleListAssets(&ar)))
+	srv.HandleFunc(auth.Auth(assets.HandlePublicAsset(&ar)))
+	srv.HandleFunc(auth.Auth(assets.HandleDeleteAsset(&ar)))
 
 	logger.Info().Msg("listening...")
 	return srv.ListenAndServe()

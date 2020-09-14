@@ -1,0 +1,1 @@
+ALTER TABLE assets ADD COLUMN title TEXT, ADD COLUMN description TEXT, ADD COLUMN content_type TEXT;

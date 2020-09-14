@@ -68,7 +68,7 @@ func VerifyJwt(jwtToken string, privateKey string) (JwtClaims, error) {
 		return claims, errors.New("JWT type is incorrect")
 	}
 
-	if jwtHeader.Alg == "HS256" {
+	if jwtHeader.Alg == "RS256" {
 		return claims, errors.New(fmt.Sprint("JWT uses unsupported signature algorithm: ", jwtHeader.Alg))
 	}
 
