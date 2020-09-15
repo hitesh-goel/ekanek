@@ -5,7 +5,7 @@ Backend is written in [GO](https://golang.org/) with [Postgres](https://www.post
 and [Localstack](https://github.com/localstack/localstack) for local s3 bucket
 
 ### How to Start
-running the following command
+running the following command in the terminal inside this repository
 - `mu` spin up the docker cluster and start the service
 - `md` tear down the docker cluster.
 
@@ -77,9 +77,9 @@ Following are the API requests.
 - **Delete the asset**: Passive deletion of Asset
    ```
   curl --location --request PUT 'http://localhost:8080/api/v1/asset/delete' \
-  --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2Nzc5MjYzMTEsImlhdCI6MTYwMDE2NjMxMSwidWlkIjoiOTk4NDQxMGEtZjczZi0xMWVhLThmNjYtMGI2MTE4ZmI3ZmVkIn0.LIgV21D3j5OFrPltOrqgKDIK6rM0M5MtCFopQ_SW0lY' \
+  --header 'Authorization: Bearer jwt_token' \
   --header 'Content-Type: application/json' \
   --data-raw '{
-      "asset_id": "cf1b9fb6-f73f-11ea-8f66-dfd6f5da7240"
+      "asset_id": asset_id
   }'```
   This will mark the record in_active won't delete the actual asset. If we want we can set a worker which will periodically delete the files.
