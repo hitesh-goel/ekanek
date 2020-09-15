@@ -11,16 +11,17 @@ running the following command
 
 ### Rest API's
 Service provides the REST API's to accommodate following features.
-*[ ] User Signup
-*[ ] User Login
-*[ ] File Upload
-*[ ] Figure out File Type
-*[ ] File Compression
-*[ ] Share public access to File
+
+- [ ] User Signup
+- [ ] User Login
+- [ ] File Upload
+- [ ] Figure out File Type
+- [ ] File Compression
+- [ ] Share public access to File
 
 Following are the API requests.
 
-- User Signup
+- **User Signup**: returns the jwt token which will be used furthure to authenticate the requests
     ```
     curl --location --request POST 'http://localhost:8080/api/v1/user/signup' \
     --header 'Content-Type: application/json' \
@@ -31,7 +32,7 @@ Following are the API requests.
         "password": "Hitesh"
     }'
     ```
-- User Login
+- **User Login**: returns the jwt token which will be used furthure to authenticate the requests
     ```
     curl --location --request POST 'http://localhost:8080/api/v1/user/login' \
     --header 'Content-Type: application/json' \
@@ -40,7 +41,7 @@ Following are the API requests.
         "password": "Hitesh"
     }'
     ```
-- File Upload: replace `jwt_token` with the previous curl response and `path_to_image_file` with actual path to image directory
+- **File Upload**: File Upload API. In the following curl code replace `jwt_token` with the jwt token from previous curl response and `path_to_image_file` with actual path to image directory
 
     eg. jwt_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2Nzc5MjYzMTEsImlhdCI6MTYwMDE2NjMxMSwidWlkIjoiOTk4NDQxMGEtZjczZi0xMWVhLThmNjYtMGI2MTE4ZmI3ZmVkIn0.LIgV21D3j5OFrPltOrqgKDIK6rM0M5MtCFopQ_SW0lY
         
@@ -52,13 +53,13 @@ Following are the API requests.
     --form 'title=Wiki Image' \
     --form 'description=Test Image'
     ```
-- List Assets Uploaded:
+- **List Assets**: List the uploaded assets by a user
     ```
   curl --location --request GET 'http://localhost:8080/api/v1/asset/list' \
   --header 'Authorization: Bearer jwt_token' \
   --data-raw ''
   ```
-- Get the asset_id from previous List to make an asset public.
+- **Grant Public Access**: Get the asset_id from previous List to make an asset public.
     ```
   curl --location --request PUT 'http://localhost:8080/api/v1/asset/public' \
   --header 'Authorization: Bearer jwt_token' \
@@ -67,12 +68,13 @@ Following are the API requests.
       "asset_id": "cf1b9fb6-f73f-11ea-8f66-dfd6f5da7240"
   }'
   ```
-- Download the asset from the browser by the url link
+  TODO: create a tiny url which can be shared to download the asset.
+- **Download**: Download the asset from the browser by the url link replace the asset_id in query param with the id from the previous list.
  ```
   http://localhost:8080/api/v1/asset/download?asset_id=asset_id
   ```
   If asset is not public then you will need to pass Authorization header to download the asset.
-- Delete the asset
+- **Delete the asset**: Passive deletion of Asset
    ```
   curl --location --request PUT 'http://localhost:8080/api/v1/asset/delete' \
   --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2Nzc5MjYzMTEsImlhdCI6MTYwMDE2NjMxMSwidWlkIjoiOTk4NDQxMGEtZjczZi0xMWVhLThmNjYtMGI2MTE4ZmI3ZmVkIn0.LIgV21D3j5OFrPltOrqgKDIK6rM0M5MtCFopQ_SW0lY' \
