@@ -107,10 +107,10 @@ func run() error {
 	srv.HandleFunc(user.HandleSignup(*cfg.PrivateKey, db))
 	srv.HandleFunc(user.HandleLogin(*cfg.PrivateKey, db))
 	srv.HandleFunc(auth.Auth(assets.HandleAssetUpload(&ar)))
-	srv.HandleFunc(auth.Auth(assets.HandleAssetDownload(&ar)))
 	srv.HandleFunc(auth.Auth(assets.HandleListAssets(&ar)))
 	srv.HandleFunc(auth.Auth(assets.HandlePublicAsset(&ar)))
 	srv.HandleFunc(auth.Auth(assets.HandleDeleteAsset(&ar)))
+	srv.HandleFunc(assets.HandleAssetDownload(&ar))
 
 	logger.Info().Msg("listening...")
 	return srv.ListenAndServe()

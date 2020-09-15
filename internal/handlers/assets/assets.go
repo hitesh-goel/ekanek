@@ -22,8 +22,8 @@ type AssetResources struct {
 }
 
 type CreateAsset struct {
-	Title       string `db:title`
-	Description string `db:description`
+	Title       string `db:"title"`
+	Description string `db:"description"`
 	Name        string `db:"name"`
 	Public      bool   `db:"public"`
 	UserId      string `db:"uid"`
@@ -32,8 +32,8 @@ type CreateAsset struct {
 
 type Asset struct {
 	Id          string `json:"asset_id" db:"id"`
-	Title       string `json:"title" db:title`
-	Description string `json:"description" db:description`
+	Title       string `json:"title" db:"title"`
+	Description string `json:"description" db:"description"`
 	Name        string `json:"asset_name" db:"name"`
 	Public      bool   `json:"is_public" db:"public"`
 	UserId      string `json:"uid" db:"uid"`
@@ -41,7 +41,7 @@ type Asset struct {
 }
 
 func HandleAssetUpload(ar *AssetResources) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/asset/upload", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/asset/upload", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
 			return
@@ -51,7 +51,7 @@ func HandleAssetUpload(ar *AssetResources) (string, func(http.ResponseWriter, *h
 }
 
 func HandleAssetDownload(ar *AssetResources) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/asset/download", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/asset/download", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
 			return
@@ -61,7 +61,7 @@ func HandleAssetDownload(ar *AssetResources) (string, func(http.ResponseWriter, 
 }
 
 func HandleListAssets(ar *AssetResources) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/assets/", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/asset/list", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
 			return
@@ -71,7 +71,7 @@ func HandleListAssets(ar *AssetResources) (string, func(http.ResponseWriter, *ht
 }
 
 func HandlePublicAsset(ar *AssetResources) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/asset/", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/asset/public", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
 			return
@@ -81,7 +81,7 @@ func HandlePublicAsset(ar *AssetResources) (string, func(http.ResponseWriter, *h
 }
 
 func HandleDeleteAsset(ar *AssetResources) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/asset/", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/asset/delete", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
 			return
@@ -91,16 +91,41 @@ func HandleDeleteAsset(ar *AssetResources) (string, func(http.ResponseWriter, *h
 }
 
 func downloadFile(w http.ResponseWriter, r *http.Request, ar *AssetResources) {
-	f, err := os.Create("temp")
+	queryValues := r.URL.Query()
+	assetId := queryValues.Get("asset_id")
+
+	if assetId == "" {
+		response.RespondWithError(w, r, "pass valid asset_id in query param", http.StatusBadRequest)
+		return
+	}
+
+	var asset CreateAsset
+	var query = `select public, s3_path, name from assets where id = $1`
+	row := ar.DTO.QueryRow(query, assetId)
+	err := row.Scan(&asset.Public, &asset.Path, &asset.Name)
+	if err != nil {
+		log.Println("Database error", err.Error())
+		response.RespondWithError(w, r, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !asset.Public {
+		userId, err := auth.Verify(r)
+		if err != nil || !strings.HasPrefix(asset.Path, userId) {
+			log.Println("user not authorised")
+			response.RespondWithError(w, r, "you are not authenticated to access this asset", http.StatusForbidden)
+			return
+		}
+	}
+
+	f, err := os.Create(assetId)
 	if err != nil {
 		log.Println("Local File Creation Error", err.Error())
 		response.RespondWithError(w, r, "Something went wrong creating the local file", http.StatusBadRequest)
 		return
 	}
 
-	fileName := "Impact_Transactions_4.1_8.17.csv"
-
-	err = awss3.DownloadFromS3("user/"+fileName, f, ar.Session)
+	err = awss3.DownloadFromS3(asset.Path, f, ar.Session)
 	if err != nil {
 		log.Println("S3 download Error: ", err.Error())
 		response.RespondWithError(w, r, "Something went wrong retrieving the file from S3", http.StatusBadRequest)
@@ -110,9 +135,9 @@ func downloadFile(w http.ResponseWriter, r *http.Request, ar *AssetResources) {
 	reader := unCompressFile(f)
 
 	defer f.Close()
-	defer os.Remove("temp")
+	defer os.Remove(assetId)
 
-	w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
+	w.Header().Set("Content-Disposition", "attachment; filename="+asset.Name)
 	_, _ = io.Copy(w, reader)
 }
 
@@ -202,7 +227,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request, ar *AssetResources) {
 		return
 	}
 
-	response.RespondWithSuccess(w, r, "Successfully uploaded to", "", http.StatusOK)
+	response.RespondWithSuccess(w, r, "Successfully uploaded", "", http.StatusOK)
 }
 
 func compressFile(srcFile io.Reader) *io.PipeReader {
@@ -298,12 +323,13 @@ func deleteAsset(w http.ResponseWriter, r *http.Request, ar *AssetResources) {
 		response.RespondWithError(w, r, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// TODO: build a worker which will access the deleted files from is_active flag and deletes from the s3 later.
+	// TODO: build a worker which will access the deleted files from is_active flag and deletes from the s3 later after 30 days or a set duration.
 	response.RespondWithSuccess(w, r, "success", "", http.StatusOK)
 }
 
 // TODO: remove public access for the asset
 
+// TODO: Grant public access to an asset
 //| asset_id | tiny_url | s3_path | is_active | created_at | updated_at
 // 1. update public access in assets table
 // 2. generate a tiny url and save in tiny_urls table

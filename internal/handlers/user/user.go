@@ -134,7 +134,7 @@ func userLogin(w http.ResponseWriter, r *http.Request, db *sql.DB, key string) {
 }
 
 func HandleSignup(key string, db *sql.DB) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/user/signup", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/user/signup", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			log.Println("Wrong request method")
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
@@ -145,7 +145,7 @@ func HandleSignup(key string, db *sql.DB) (string, func(http.ResponseWriter, *ht
 }
 
 func HandleLogin(key string, db *sql.DB) (string, func(http.ResponseWriter, *http.Request)) {
-	return "/user/login", func(w http.ResponseWriter, r *http.Request) {
+	return "/api/v1/user/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			log.Println("Wrong request method")
 			response.RespondWithError(w, r, "wrong http method", http.StatusMethodNotAllowed)
